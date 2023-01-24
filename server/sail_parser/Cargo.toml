@@ -1,0 +1,11 @@
+[package]
+name = "sail_parser"
+version = "0.1.0"
+authors = ["Tim Hutt <tdhutt@gmail.com>"]
+edition = "2021"
+license = "MIT"
+
+[lib]
+
+[dependencies]
+chumsky = "1.0.0-alpha.4"

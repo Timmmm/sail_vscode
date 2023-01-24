@@ -1,0 +1,6 @@
+node_modules
+.vsix
+*.vsix
+/dist
+/docs
+/server/target

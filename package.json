@@ -1,0 +1,52 @@
+{
+    "name": "sail-vscode",
+    "displayName": "Sail Language Support",
+    "description": "VSCode support for Sail files.",
+    "repository": "https://github.com/timmmm/sail_vscode/",
+    "author": "Tim Hutt",
+    "version": "0.0.1",
+    "license": "MIT",
+    "icon": "images/icon.png",
+    "engines": {
+        "vscode": "^1.80.0"
+    },
+    "categories": [
+        "Programming Languages",
+        "Linters"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "sail",
+                "aliases": [
+                    "Sail"
+                ],
+                "extensions": [
+                    ".sail"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "sail",
+                "scopeName": "source.sail",
+                "path": "./syntaxes/sail.tmLanguage.json"
+            }
+        ]
+    },
+    "dependencies": {
+        "vscode-languageclient": "^8.1.0"
+    },
+    "devDependencies": {
+        "@types/node": "^20.5.6",
+        "@types/vscode": "^1.80.0",
+        "@typescript-eslint/parser": "^6.4.1",
+        "esbuild": "^0.19.2",
+        "eslint": "^8.8.0",
+        "typescript": "^5.2.2",
+        "@vscode/vsce": "^2.20.1",
+        "vscode-test": "^1.6.1"
+    },
+    "main": "dist/extension.js"
+}

@@ -1,0 +1,10 @@
+[workspace]
+
+members = [
+    "sail_parser",
+    "sail_server",
+]
+
+[profile.release]
+# This makes incremental release builds *much* faster.
+incremental = true

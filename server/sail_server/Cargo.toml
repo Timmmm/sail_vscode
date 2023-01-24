@@ -1,0 +1,16 @@
+[package]
+name = "sail_server"
+version = "0.1.0"
+authors = ["Tim Hutt <tdhutt@gmail.com>"]
+edition = "2021"
+license = "MIT"
+
+[dependencies]
+notify = "6.1.1"
+tokio = { version = "1.16.1", features = ["macros", "rt-multi-thread", "io-std"] }
+tower-lsp = "0.20.0"
+itertools = "0.11.0"
+walkdir = "2.3.3"
+sail_parser = { path = "../sail_parser" }
+chumsky = "1.0.0-alpha.4"
+serde_json = "1.0.105"

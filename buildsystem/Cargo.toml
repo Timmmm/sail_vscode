@@ -1,0 +1,12 @@
+[package]
+name = "buildsystem"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+argh = "0.1.4"
+anyhow = { version = "1.0.41", features = ["backtrace"] }
+fs-err = "2.8.1"
+
+[patch.crates-io]
+argh = { git = "https://github.com/Timmmm/argh", branch = "multiline_docs" }
