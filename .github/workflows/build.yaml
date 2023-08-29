@@ -36,4 +36,4 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Make Release
-      run: ./make release
+      run: ./make --no-cross release
