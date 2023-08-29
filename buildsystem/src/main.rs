@@ -318,10 +318,6 @@ fn main() -> Result<()> {
             clean()?;
         }
         Target::Release => {
-            if opts.no_cross {
-                eprintln!("Warning: --no-cross option ignored when making a release");
-            }
-
             if !opts.no_clean {
                 clean()?;
             }
