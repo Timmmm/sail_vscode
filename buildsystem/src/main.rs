@@ -7,7 +7,7 @@ use std::{
 };
 
 use anyhow::{bail, Result};
-use argh::FromArgs;
+use clap::Parser;
 
 // NPM command name. On Windows we need .cmd otherwise it can't find it (at least
 // when using FNM).
@@ -21,7 +21,7 @@ const NPX: &'static str = "npx.cmd";
 #[cfg(not(windows))]
 const NPX: &'static str = "npx";
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
 enum Target {
     Clean,
     Client,
@@ -47,7 +47,8 @@ impl FromStr for Target {
     }
 }
 
-#[derive(FromArgs, PartialEq, Debug)]
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
 /// Extension build system.
 struct Opts {
     /// the target to build. One of:
@@ -59,15 +60,14 @@ struct Opts {
     /// * release       Clean and rebuild everything and make a
     ///                 package
     /// * server        Build the Rust language server
-    #[argh(positional)]
     target: Target,
 
     /// don't cross-compile the server (useful for development). Ignored for the release target.
-    #[argh(switch)]
+    #[arg(long)]
     no_cross: bool,
 
     /// don't clean when making a release (only for `make release`)
-    #[argh(switch)]
+    #[arg(long)]
     no_clean: bool,
 }
 
@@ -137,10 +137,6 @@ impl Platform {
         }
     }
 
-    fn is_mac(&self) -> bool {
-        matches!(self, Platform::MacX86 | Platform::MacArm)
-    }
-
     fn rust_target(&self) -> Option<&'static str> {
         match self {
             Platform::LinuxX86 => Some("x86_64-unknown-linux-musl"),
@@ -192,6 +188,7 @@ fn set_cargo_flags(command: &mut Command, target_platform: &Platform) -> Result<
             "x86_64-w64-mingw32-gcc",
         );
     }
+    // TODO: Probably need to do that for cross-compiling to Mac too.
     Ok(())
 }
 
@@ -295,7 +292,7 @@ fn clean() -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    let opts: Opts = argh::from_env();
+    let opts = Opts::parse();
 
     // `cd ..` so that this works when run from ../make.
     let cwd = std::env::current_dir()?;
@@ -377,33 +374,59 @@ fn check_build_dependencies(_opts: &Opts) -> Result<()> {
     check_command_exists("cargo", &["--version"], "You might need to install Rust: https://www.rust-lang.org/tools/install")?;
     check_command_exists("rustup", &["--version"], "You might need to install Rust: https://www.rust-lang.org/tools/install")?;
 
-    if Platform::native().is_mac() {
-        check_command_exists("x86_64-linux-musl-gcc", &["--version"], "You might need to install a cross-compiler for Linux. Try `brew install FiloSottile/musl-cross/musl-cross`.")?;
-        check_command_exists("x86_64-w64-mingw32-gcc", &["--version"], "You might need to install a cross-compiler for Windows. Try `brew install mingw-w64`.")?;
+    // Check cross-compilers.
+    match Platform::native() {
+        Platform::LinuxX86 => {
+            check_command_exists("x86_64-linux-musl-gcc", &["--version"], "You might need to install a cross-compiler for Linux.")?;
+            check_command_exists("x86_64-w64-mingw32-gcc", &["--version"], "You might need to install a cross-compiler for Windows.")?;
+            check_command_exists("x86_64-apple-darwin-gcc", &["--version"], "You might need to install a cross-compiler for Mac.")?;
+            check_command_exists("aarch64-apple-darwin-gcc", &["--version"], "You might need to install a cross-compiler for Mac.")?;
+        }
+        Platform::MacX86 => {
+            check_command_exists("x86_64-linux-musl-gcc", &["--version"], "You might need to install a cross-compiler for Linux. Try `brew install FiloSottile/musl-cross/musl-cross`.")?;
+            check_command_exists("x86_64-w64-mingw32-gcc", &["--version"], "You might need to install a cross-compiler for Windows. Try `brew install mingw-w64`.")?;
+            check_command_exists("aarch64-apple-darwin-gcc", &["--version"], "You might need to install a cross-compiler for Mac.")?;
+        }
+        Platform::MacArm => {
+            check_command_exists("x86_64-linux-musl-gcc", &["--version"], "You might need to install a cross-compiler for Linux. Try `brew install FiloSottile/musl-cross/musl-cross`.")?;
+            check_command_exists("x86_64-w64-mingw32-gcc", &["--version"], "You might need to install a cross-compiler for Windows. Try `brew install mingw-w64`.")?;
+            check_command_exists("x86_64-apple-darwin-gcc", &["--version"], "You might need to install a cross-compiler for Mac.")?;
+        }
+        _ => {}
+    }
 
-        // TODO: Windows cross compiler.
-
-        // Check the Rustup targets and components we need.
-        let installed_targets = rustup_installed_items("target")?;
-        let installed_components = rustup_installed_items("component")?;
-
-        for target_platform in [
-            Platform::LinuxX86,
+    // Check non-native Rustup targets and components.
+    let target_platforms: &[Platform] = match Platform::native() {
+        Platform::LinuxX86 => &[
             Platform::MacX86,
             Platform::MacArm,
             Platform::WinX86,
-        ] {
-            let target = target_platform.rust_target().unwrap();
-            if !installed_targets.contains(target) {
-                bail!("{target} is not installed. Try `rustup target add {target}`");
-            }
-            let component = format!("rust-std-{target}");
-            if !installed_components.contains(&component) {
-                bail!("{component} is not installed. Try `rustup component add {component}`");
-            }
-        }
+        ],
+        Platform::MacX86 => &[
+            Platform::LinuxX86,
+            Platform::MacArm,
+            Platform::WinX86,
+        ],
+        Platform::MacArm => &[
+            Platform::LinuxX86,
+            Platform::MacX86,
+            Platform::WinX86,
+        ],
+        _ => &[],
+    };
 
-        // TODO: Need to check targets too?
+    let installed_targets = rustup_installed_items("target")?;
+    let installed_components = rustup_installed_items("component")?;
+
+    for target_platform in target_platforms {
+        let target = target_platform.rust_target().unwrap();
+        if !installed_targets.contains(target) {
+            bail!("{target} is not installed. Try `rustup target add {target}`");
+        }
+        let component = format!("rust-std-{target}");
+        if !installed_components.contains(&component) {
+            bail!("{component} is not installed. Try `rustup component add {component}`");
+        }
     }
 
     Ok(())
