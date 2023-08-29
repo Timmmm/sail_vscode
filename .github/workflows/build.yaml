@@ -11,16 +11,25 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: awalsh128/cache-apt-pkgs-action@latest
+    - name: Install Linux and Windows Cross Compilers
+      uses: awalsh128/cache-apt-pkgs-action@latest
       with:
         packages: musl-tools gcc-mingw-w64
         version: 1.0
+
+    - name: Set up MacOS Cross Compiler
+      uses: mbround18/setup-osxcross@v1
+      with:
+        osx-version: "12.3"
+
     - name: Install Musl
       run: rustup target add x86_64-unknown-linux-musl
-    - uses: actions/checkout@v3
+
+    - name: Check out source code
+      uses: actions/checkout@v3
+
     - name: Make Release
-      run: ./make --no-cross release
+      run: ./make release

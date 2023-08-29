@@ -323,7 +323,7 @@ fn main() -> Result<()> {
             }
             npm_install()?;
             make_client()?;
-            make_server(false)?;
+            make_server(opts.no_cross)?;
             make_package()?;
         }
         Target::NpmInstall => {
