@@ -37,3 +37,9 @@ jobs:
 
     - name: Make Release
       run: ./make --no-cross release
+
+    - name: Upload Package
+      uses: actions/upload-artifact@v3
+      with:
+        name: package
+        path: '*.vsix'
