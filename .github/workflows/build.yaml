@@ -23,10 +23,11 @@ jobs:
         packages: musl-tools gcc-mingw-w64-x86-64-win32
         version: 1.0
 
-    - name: Set up MacOS Cross Compiler
-      uses: mbround18/setup-osxcross@v1
-      with:
-        osx-version: "12.3"
+    # This builds Clang from source and doesn't seem to cache it.
+    # - name: Set up MacOS Cross Compiler
+    #   uses: mbround18/setup-osxcross@v1
+    #   with:
+    #     osx-version: "12.3"
 
     - name: Install Musl
       run: rustup target add x86_64-unknown-linux-musl

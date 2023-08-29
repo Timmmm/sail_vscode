@@ -224,7 +224,7 @@ fn copy_server_binary_to_dist(target_platform: &Platform) -> Result<()> {
 fn make_server(no_cross: bool) -> Result<()> {
     eprintln!("Building server...");
 
-    for target_platform in [Platform::LinuxX86, Platform::MacX86, Platform::MacArm, Platform::WinX86] {
+    for target_platform in [Platform::LinuxX86, /*Platform::MacX86, Platform::MacArm, */Platform::WinX86] {
         if no_cross && target_platform != Platform::native() {
             continue;
         }
@@ -379,8 +379,8 @@ fn check_build_dependencies(opts: &Opts) -> Result<()> {
         Platform::LinuxX86 => {
             check_command_exists("x86_64-linux-musl-gcc", &["--version"], "You might need to install a compiler for Musl Linux. Try 'sudo apt install musl-tools'.")?;
             check_command_exists("x86_64-w64-mingw32-gcc", &["--version"], "You might need to install a cross-compiler for Windows. Try 'sudo apt install gcc-mingw-w64-x86-64-win32'.")?;
-            check_command_exists("x86_64-apple-darwin-gcc", &["--version"], "You might need to install a cross-compiler for Mac.")?;
-            check_command_exists("aarch64-apple-darwin-gcc", &["--version"], "You might need to install a cross-compiler for Mac.")?;
+            // check_command_exists("x86_64-apple-darwin-gcc", &["--version"], "You might need to install a cross-compiler for Mac.")?;
+            // check_command_exists("aarch64-apple-darwin-gcc", &["--version"], "You might need to install a cross-compiler for Mac.")?;
         }
         Platform::MacX86 => {
             check_command_exists("x86_64-linux-musl-gcc", &["--version"], "You might need to install a cross-compiler for Linux. Try `brew install FiloSottile/musl-cross/musl-cross`.")?;
