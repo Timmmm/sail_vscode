@@ -377,7 +377,7 @@ fn check_build_dependencies(_opts: &Opts) -> Result<()> {
     // Check cross-compilers.
     match Platform::native() {
         Platform::LinuxX86 => {
-            check_command_exists("x86_64-linux-musl-gcc", &["--version"], "You might need to install a cross-compiler for Linux.")?;
+            check_command_exists("x86_64-linux-musl-gcc", &["--version"], "You might need to install a compiler for Musl Linux. Try 'sudo apt install musl-tools'.")?;
             check_command_exists("x86_64-w64-mingw32-gcc", &["--version"], "You might need to install a cross-compiler for Windows.")?;
             check_command_exists("x86_64-apple-darwin-gcc", &["--version"], "You might need to install a cross-compiler for Mac.")?;
             check_command_exists("aarch64-apple-darwin-gcc", &["--version"], "You might need to install a cross-compiler for Mac.")?;
