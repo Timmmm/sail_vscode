@@ -364,7 +364,7 @@ fn rustup_installed_items(item_type: &str) -> Result<HashSet<String>> {
 }
 
 
-fn check_build_dependencies(_opts: &Opts) -> Result<()> {
+fn check_build_dependencies(opts: &Opts) -> Result<()> {
     eprintln!("Checking build dependencies...");
 
     // For now just check all dependencies, but we could skip some checks
@@ -374,11 +374,15 @@ fn check_build_dependencies(_opts: &Opts) -> Result<()> {
     check_command_exists("cargo", &["--version"], "You might need to install Rust: https://www.rust-lang.org/tools/install")?;
     check_command_exists("rustup", &["--version"], "You might need to install Rust: https://www.rust-lang.org/tools/install")?;
 
+    if opts.no_cross {
+        return Ok(());
+    }
+
     // Check cross-compilers.
     match Platform::native() {
         Platform::LinuxX86 => {
             check_command_exists("x86_64-linux-musl-gcc", &["--version"], "You might need to install a compiler for Musl Linux. Try 'sudo apt install musl-tools'.")?;
-            check_command_exists("x86_64-w64-mingw32-gcc", &["--version"], "You might need to install a cross-compiler for Windows.")?;
+            check_command_exists("x86_64-w64-mingw32-gcc", &["--version"], "You might need to install a cross-compiler for Windows. Try 'sudo apt install gcc-mingw-w64'.")?;
             check_command_exists("x86_64-apple-darwin-gcc", &["--version"], "You might need to install a cross-compiler for Mac.")?;
             check_command_exists("aarch64-apple-darwin-gcc", &["--version"], "You might need to install a cross-compiler for Mac.")?;
         }
