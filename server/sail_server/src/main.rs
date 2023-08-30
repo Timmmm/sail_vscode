@@ -38,7 +38,7 @@ impl State {
         self.open_files.iter().chain(
             self.disk_files
                 .all_files()
-                .filter(|(uri, _)| self.open_files.contains_key(uri)),
+                .filter(|(uri, _)| !self.open_files.contains_key(uri)),
         )
     }
 }
