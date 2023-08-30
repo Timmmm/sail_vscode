@@ -47,7 +47,10 @@ pub fn scan_folders(folders: HashSet<Url>) -> HashMap<Url, File> {
                                             files.insert(url, file);
                                         }
                                         None => {
-                                            eprintln!("Error converting path to string: {}", path.display());
+                                            eprintln!(
+                                                "Error converting path to string: {}",
+                                                path.display()
+                                            );
                                         }
                                     }
                                 }
