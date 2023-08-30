@@ -4,7 +4,8 @@
     "description": "VSCode support for Sail files.",
     "repository": "https://github.com/timmmm/sail_vscode/",
     "author": "Tim Hutt",
-    "version": "0.0.1",
+    "publisher": "tim.hutt",
+    "version": "0.0.2",
     "license": "MIT",
     "icon": "images/icon.png",
     "engines": {

@@ -1,7 +1,7 @@
 **
 !CHANGELOG.md
 !dist/**
-!images/**
+!images/*.png
 !language-configuration.json
 !LICENSE.md
 !package.json

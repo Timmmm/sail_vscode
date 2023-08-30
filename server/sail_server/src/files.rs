@@ -23,27 +23,44 @@ pub fn scan_folders(folders: HashSet<Url>) -> HashMap<Url, File> {
             continue;
         }
         if let Ok(path) = folder.to_file_path() {
+            eprintln!("Scanning {}", path.display());
             for entry in WalkDir::new(path) {
-                if let Ok(entry) = entry {
-                    if entry.file_type().is_file()
-                        && entry.path().extension() == Some("sail".as_ref())
-                    {
-                        let path = entry.path();
-                        if let Ok(source) = fs::read_to_string(path) {
-                            let file = File::new(source);
-                            if let Some(path_str) = path.to_str() {
-                                let mut url = folder.clone();
-                                dbg!(&url, &path_str);
-                                // TODO: This is a hack to get around Windows paths and
-                                // a bug in Url::set_path. https://github.com/servo/rust-url/issues/864
-                                let mut path_windows = path_str.replace("\\", "/");
-                                if !path_windows.starts_with('/') {
-                                    path_windows.insert(0, '/');
+                match entry {
+                    Ok(entry) => {
+                        if entry.file_type().is_file()
+                            && entry.path().extension() == Some("sail".as_ref())
+                        {
+                            let path = entry.path();
+                            match fs::read_to_string(path) {
+                                Ok(source) => {
+                                    let file = File::new(source);
+                                    match path.to_str() {
+                                        Some(path_str) => {
+                                            let mut url = folder.clone();
+                                            dbg!(&url, &path_str);
+                                            // TODO: This is a hack to get around Windows paths and
+                                            // a bug in Url::set_path. https://github.com/servo/rust-url/issues/864
+                                            let mut path_windows = path_str.replace("\\", "/");
+                                            if !path_windows.starts_with('/') {
+                                                path_windows.insert(0, '/');
+                                            }
+                                            url.set_path(&path_windows);
+                                            eprintln!("Inserting {}", url);
+                                            files.insert(url, file);
+                                        }
+                                        None => {
+                                            eprintln!("Error converting path to string: {}", path.display());
+                                        }
+                                    }
                                 }
-                                url.set_path(&path_windows);
-                                files.insert(url, file);
+                                Err(e) => {
+                                    eprintln!("Error reading file {}: {:?}", path.display(), e);
+                                }
                             }
                         }
+                    }
+                    Err(e) => {
+                        eprintln!("Error scanning folder: {:?}", e);
                     }
                 }
             }
