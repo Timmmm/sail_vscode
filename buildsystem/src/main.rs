@@ -174,13 +174,7 @@ fn set_cargo_flags(command: &mut Command, target_platform: &Platform) -> Result<
     if let Some(flag) = target_flag_value(target_platform)? {
         command.arg("--target").arg(flag);
     }
-    if *target_platform == Platform::LinuxX86 {
-        // Tell Cargo which linker to use for the musl target.
-        command.env(
-            "CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER",
-            "x86_64-linux-musl-gcc",
-        );
-    }
+    // TODO: May not need this now with latest Rust.
     if *target_platform == Platform::WinX86 && *target_platform != Platform::native() {
         // Tell Cargo which linker to use for the windows target, if cross-compiling.
         command.env(
@@ -371,6 +365,10 @@ fn check_build_dependencies(opts: &Opts) -> Result<()> {
     check_command_exists("rustup", &["--version"], "You might need to install Rust: https://www.rust-lang.org/tools/install")?;
 
     if opts.no_cross {
+        if Platform::native() == Platform::LinuxX86 {
+            // We always use musl on Linux.
+            check_command_exists("x86_64-linux-musl-gcc", &["--version"], "You might need to install a compiler for Musl Linux. Try 'sudo apt install musl-tools'.")?;
+        }
         return Ok(());
     }
 
