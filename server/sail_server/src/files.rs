@@ -23,7 +23,6 @@ pub fn scan_folders(folders: HashSet<Url>) -> HashMap<Url, File> {
             continue;
         }
         if let Ok(path) = folder.to_file_path() {
-            eprintln!("Scanning {}", path.display());
             for entry in WalkDir::new(path) {
                 match entry {
                     Ok(entry) => {
@@ -45,7 +44,6 @@ pub fn scan_folders(folders: HashSet<Url>) -> HashMap<Url, File> {
                                                 path_windows.insert(0, '/');
                                             }
                                             url.set_path(&path_windows);
-                                            eprintln!("Inserting {}", url);
                                             files.insert(url, file);
                                         }
                                         None => {

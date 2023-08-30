@@ -43,13 +43,6 @@ impl State {
     }
 }
 
-// static MISSING_QUERY: Lazy<Query> = Lazy::new(|| {
-//   Query::new(
-//     language(),
-//     "(MISSING) @missing",
-//   ).expect("missing query compilation error")
-// });
-
 struct Backend {
     state: Mutex<State>,
     client: Client,
@@ -122,7 +115,8 @@ impl LanguageServer for Backend {
             .log_message(MessageType::INFO, "server initialized")
             .await;
 
-        // TODO: Technically we should check if the client capabilities support this.
+        // Technically we should check if the client capabilities support this
+        // but I can't be bothered.
 
         // TODO: This is kind of broken. If you rename a folder that contains some of
         // these files then you won't get a notification for them. The easiest
@@ -326,51 +320,51 @@ impl LanguageServer for Backend {
         Ok(None)
     }
 
-    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
-        self.client
-            .log_message(MessageType::INFO, format!("completion: {:?}", params))
-            .await;
+    async fn completion(&self, _params: CompletionParams) -> Result<Option<CompletionResponse>> {
+        // self.client
+        //     .log_message(MessageType::INFO, format!("completion: {:?}", params))
+        //     .await;
 
-        let uri = &params.text_document_position.text_document.uri;
-        let state = self.state.lock().await;
-        let _file = state
-            .open_files
-            .get(uri)
-            .expect("completion for file that isn't open");
+        // let uri = &params.text_document_position.text_document.uri;
+        // let state = self.state.lock().await;
+        // let _file = state
+        //     .open_files
+        //     .get(uri)
+        //     .expect("completion for file that isn't open");
 
         // TODO: Completion
 
         Ok(None)
     }
 
-    async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
-        self.client
-            .log_message(MessageType::INFO, format!("hover: {:?}", params))
-            .await;
+    async fn hover(&self, _params: HoverParams) -> Result<Option<Hover>> {
+        // self.client
+        //     .log_message(MessageType::INFO, format!("hover: {:?}", params))
+        //     .await;
 
-        let uri = &params.text_document_position_params.text_document.uri;
-        let state = self.state.lock().await;
-        let _file = state
-            .open_files
-            .get(uri)
-            .expect("hover for file that isn't open");
+        // let uri = &params.text_document_position_params.text_document.uri;
+        // let state = self.state.lock().await;
+        // let _file = state
+        //     .open_files
+        //     .get(uri)
+        //     .expect("hover for file that isn't open");
 
         // TODO: Hover
 
         Ok(None)
     }
 
-    async fn signature_help(&self, params: SignatureHelpParams) -> Result<Option<SignatureHelp>> {
-        self.client
-            .log_message(MessageType::INFO, format!("signature: {:?}", params))
-            .await;
+    async fn signature_help(&self, _params: SignatureHelpParams) -> Result<Option<SignatureHelp>> {
+        // self.client
+        //     .log_message(MessageType::INFO, format!("signature: {:?}", params))
+        //     .await;
 
-        let uri = &params.text_document_position_params.text_document.uri;
-        let state = self.state.lock().await;
-        let _file = state
-            .open_files
-            .get(uri)
-            .expect("signature for file that isn't open");
+        // let uri = &params.text_document_position_params.text_document.uri;
+        // let state = self.state.lock().await;
+        // let _file = state
+        //     .open_files
+        //     .get(uri)
+        //     .expect("signature for file that isn't open");
 
         // TODO: Signature help.
 

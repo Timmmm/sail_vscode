@@ -71,7 +71,7 @@ impl File {
                 Some(DiagnosticSeverity::ERROR),
                 None,
                 Some("Sail".to_string()),
-                "Lex error".to_string(), // TODO
+                error.to_string(),
                 None,
                 None,
             ));
