@@ -174,15 +174,6 @@ fn set_cargo_flags(command: &mut Command, target_platform: &Platform) -> Result<
     if let Some(flag) = target_flag_value(target_platform)? {
         command.arg("--target").arg(flag);
     }
-    // TODO: May not need this now with latest Rust.
-    if *target_platform == Platform::WinX86 && *target_platform != Platform::native() {
-        // Tell Cargo which linker to use for the windows target, if cross-compiling.
-        command.env(
-            "CARGO_TARGET_X86_64_PC_WINDOWS_GNU",
-            "x86_64-w64-mingw32-gcc",
-        );
-    }
-    // TODO: Probably need to do that for cross-compiling to Mac too.
     Ok(())
 }
 
@@ -218,7 +209,7 @@ fn copy_server_binary_to_dist(target_platform: &Platform) -> Result<()> {
 fn make_server(no_cross: bool) -> Result<()> {
     eprintln!("Building server...");
 
-    for target_platform in [Platform::LinuxX86, /*Platform::MacX86, Platform::MacArm, */Platform::WinX86] {
+    for target_platform in [Platform::LinuxX86, Platform::MacX86, /*Platform::MacArm, */Platform::WinX86] {
         if no_cross && target_platform != Platform::native() {
             continue;
         }
