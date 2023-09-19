@@ -15,29 +15,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Install Linux and Windows Cross Compilers
-      uses: awalsh128/cache-apt-pkgs-action@latest
-      with:
-        # There's a -posix version of gcc-mingw. It just affects whether
-        # C++ threading features are supported but we don't need that.
-        # https://stackoverflow.com/a/30390278
-        packages: musl-tools gcc-mingw-w64-x86-64-win32
-        version: 1.0
-
-    # This builds Clang from source and doesn't seem to cache it.
-    # - name: Set up MacOS Cross Compiler
-    #   uses: mbround18/setup-osxcross@v1
+    # This doesn't seem to work.
+    # - name: Install Linux and Windows Cross Compilers
+    #   uses: awalsh128/cache-apt-pkgs-action@latest
     #   with:
-    #     osx-version: "12.3"
+    #     # There's a -posix version of gcc-mingw. It just affects whether
+    #     # C++ threading features are supported but we don't need that.
+    #     # https://stackoverflow.com/a/30390278
+    #     packages: musl-tools gcc-mingw-w64-x86-64-win32
+    #     version: 1.0
 
-    - name: Install Musl
-      run: rustup target add x86_64-unknown-linux-musl
+    - name: Install Linux and Windows Cross Compilers
+      run: sudo apt-get install --yes --no-install-recommends musl-tools gcc-mingw-w64-x86-64-win32
+
+    # This compiles Clang but it should cache the results for future builds.
+    - name: Set up MacOS Cross Compiler
+      uses: mbround18/setup-osxcross@v2
+      with:
+        osx-version: "12.3"
+
+    - name: Install Rustup targets
+      run: rustup target add x86_64-unknown-linux-musl x86_64-pc-windows-gnu x86_64-apple-darwin aarch64-apple-darwin
 
     - name: Check out source code
       uses: actions/checkout@v3
 
     - name: Make Release
-      run: ./make --no-cross release
+      run: ./make release
 
     - name: Upload Package
       uses: actions/upload-artifact@v3
