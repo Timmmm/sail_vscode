@@ -30,7 +30,7 @@ jobs:
 
     # This compiles Clang but it should cache the results for future builds.
     - name: Set up MacOS Cross Compiler
-      uses: mbround18/setup-osxcross@v2
+      uses: Timmmm/setup-osxcross@v2
       with:
         osx-version: "12.3"
 

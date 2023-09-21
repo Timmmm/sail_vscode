@@ -209,7 +209,7 @@ fn copy_server_binary_to_dist(target_platform: &Platform) -> Result<()> {
 fn make_server(no_cross: bool) -> Result<()> {
     eprintln!("Building server...");
 
-    for target_platform in [Platform::LinuxX86, Platform::MacX86, /*Platform::MacArm, */Platform::WinX86] {
+    for target_platform in [Platform::LinuxX86, Platform::MacX86, Platform::MacArm, Platform::WinX86] {
         if no_cross && target_platform != Platform::native() {
             continue;
         }
