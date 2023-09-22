@@ -31,6 +31,7 @@ pub enum Token {
     String(String),
 
     // Operators and control characters.
+    Dollar,
     LeftBracket,        // (
     RightBracket,       // )
     LeftSquareBracket,  // [
@@ -170,6 +171,7 @@ impl fmt::Display for Token {
             Token::String(s) => write!(f, "{}", s),
 
             // Operators and other control characters.
+            Token::Dollar => write!(f, "$"),
             Token::LeftBracket => write!(f, "("),
             Token::RightBracket => write!(f, ")"),
             Token::LeftSquareBracket => write!(f, "["),
@@ -422,6 +424,7 @@ pub fn lexer<'src>(
         just("->").to(Token::RightArrow),
     ))
     .or(choice((
+        just('$').to(Token::Dollar),
         just('|').to(Token::Or),
         just('>').to(Token::GreaterThan),
         just('=').to(Token::Equal),
