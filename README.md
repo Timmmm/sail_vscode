@@ -1,6 +1,6 @@
 # Sail VSCode Extension
 
-This extension provides basic support for writing Sail code. [Sail](https://github.com/rems-project/sail) is a programming language for describing the semantics of instruction set architectures (ISAs) and their semantics. It is [the official specification language for RISC-V](https://github.com/riscv/sail-riscv) but there are also Sail models for ARM and x86.
+This extension provides basic support for writing Sail code. [Sail](https://github.com/rems-project/sail) is a programming language for describing the semantics of instruction set architectures (ISAs). It is [the official specification language for RISC-V](https://github.com/riscv/sail-riscv) but there are also Sail models for ARM and x86.
 
 ## Features / Differences from the official Extension
 
