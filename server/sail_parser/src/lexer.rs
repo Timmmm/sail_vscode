@@ -13,22 +13,20 @@ use std::fmt;
 
 pub type Span = SimpleSpan<usize>;
 
-// TODO: Make tokens zero copy &str when we have a parser as well as a lexer.
-// For now they are String to keep things simple.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Token {
+pub enum Token<'src> {
     // Identifiers
-    Id(String),
-    TyVal(String), // 'identifier (the ' is discarded)
+    Id(&'src str),
+    TyVal(&'src str), // 'identifier (the ' is discarded)
 
     // Number literals.
-    Bin(String),  // 0b010101 (the 0b is discarded)
-    Hex(String),  // 0xDEAD32 (the 0x is discarded)
-    Num(String),  // -123
-    Real(String), //-034.432
+    Bin(&'src str),  // 0b010101 (the 0b is discarded)
+    Hex(&'src str),  // 0xDEAD32 (the 0x is discarded)
+    Num(&'src str),  // -123
+    Real(&'src str), //-034.432
 
     // String literal.
-    String(String),
+    String(&'src str),
 
     // Operators and control characters.
     Dollar,
@@ -154,7 +152,7 @@ pub enum Token {
     KwWreg,
 }
 
-impl fmt::Display for Token {
+impl<'str> fmt::Display for Token<'str> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             // Identifiers.
@@ -346,12 +344,12 @@ where
 }
 
 pub fn lexer<'src>(
-) -> impl Parser<'src, &'src str, Vec<(Token, Span)>, extra::Err<Rich<'src, char, Span>>> {
+) -> impl Parser<'src, &'src str, Vec<(Token<'src>, Span)>, extra::Err<Rich<'src, char, Span>>> {
     // Arbitrary length positive or negative integer.
     let num = just('-')
         .or_not()
         .then(text::digits(10))
-        .map_slice(|s: &str| Token::Num(s.to_owned()))
+        .map_slice(Token::Num)
         .boxed();
 
     // Real number.
@@ -360,19 +358,19 @@ pub fn lexer<'src>(
         .then(text::digits(10))
         .then(just('.'))
         .then(text::digits(10))
-        .map_slice(|s: &str| Token::Real(s.to_owned()))
+        .map_slice(Token::Real)
         .boxed();
 
     // Hex number.
     let hex = just("0x")
         .ignore_then(text::digits(16))
-        .map_slice(|s: &str| Token::Hex(s.to_owned()))
+        .map_slice(Token::Hex)
         .boxed();
 
     // Binary number.
     let bin = just("0b")
         .ignore_then(text::digits(2))
-        .map_slice(|s: &str| Token::Bin(s.to_owned()))
+        .map_slice(Token::Bin)
         .boxed();
 
     // Strings.
@@ -400,7 +398,7 @@ pub fn lexer<'src>(
     let string = just('"')
         .ignore_then(none_of(&['\\', '"']).or(escape).repeated())
         .then_ignore(just('"'))
-        .map_slice(|s: &str| Token::String(s.to_owned()))
+        .map_slice(Token::String)
         .boxed();
 
     // The order of these is important, e.g. <= must come before < otherwise
@@ -454,7 +452,7 @@ pub fn lexer<'src>(
     // TyVar
     let tyvar = just('\'')
         .ignore_then(ident())
-        .map_slice(|s: &str| Token::TyVal(s.to_owned()))
+        .map_slice(Token::TyVal)
         .boxed();
 
     // A parser for identifiers and keywords.
@@ -542,7 +540,7 @@ pub fn lexer<'src>(
             "with" => Token::KwWith,
             "wmem" => Token::KwWmem,
             "wreg" => Token::KwWreg,
-            _ => Token::Id(ident.to_string()),
+            _ => Token::Id(ident),
         })
         .boxed();
 
