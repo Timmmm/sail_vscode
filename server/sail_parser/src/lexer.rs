@@ -5,13 +5,13 @@ use chumsky::{
     extra::ParserExtra,
     input::{StrInput, ValueInput},
     prelude::*,
-    text::Char,
+    text::{Char, whitespace},
     util::MaybeRef,
     Parser,
 };
 use std::fmt;
 
-pub type Span = SimpleSpan<usize>;
+use crate::Span;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Token<'src> {
@@ -28,8 +28,10 @@ pub enum Token<'src> {
     // String literal.
     String(&'src str),
 
-    // Operators and control characters.
+    // Pragma
     Dollar,
+
+    // Operators and control characters.
     LeftBracket,        // (
     RightBracket,       // )
     LeftSquareBracket,  // [
@@ -167,6 +169,9 @@ impl<'str> fmt::Display for Token<'str> {
 
             // String literal.
             Token::String(s) => write!(f, "{}", s),
+
+            // Pragma
+            Token::Dollar => write!(f, "$"),
 
             // Operators and other control characters.
             Token::Dollar => write!(f, "$"),
@@ -316,7 +321,7 @@ pub fn ident<'a, I: ValueInput<'a> + StrInput<'a, char>, E: ParserExtra<'a, I>>(
         )
         .ignored()
         .or(just('~').ignored())
-        .slice()
+        .to_slice()
 }
 
 /// Like digits() but an exact number of then.
@@ -349,7 +354,8 @@ pub fn lexer<'src>(
     let num = just('-')
         .or_not()
         .then(text::digits(10))
-        .map_slice(Token::Num)
+        .to_slice()
+        .map(Token::Num)
         .boxed();
 
     // Real number.
@@ -358,47 +364,65 @@ pub fn lexer<'src>(
         .then(text::digits(10))
         .then(just('.'))
         .then(text::digits(10))
-        .map_slice(Token::Real)
+        .to_slice()
+        .map(Token::Real)
         .boxed();
 
     // Hex number.
     let hex = just("0x")
         .ignore_then(text::digits(16))
-        .map_slice(Token::Hex)
+        .to_slice()
+        .map(Token::Hex)
         .boxed();
 
     // Binary number.
     let bin = just("0b")
         .ignore_then(text::digits(2))
-        .map_slice(Token::Bin)
+        .to_slice()
+        .map(Token::Bin)
         .boxed();
 
     // Strings.
     let escape = just('\\')
-        .ignore_then(choice((
-            just('\\'),
-            just('"'),
-            just('\''),
-            just('n').to('\n'),
-            just('t').to('\t'),
-            just('b').to('\x08'),
-            just('r').to('\r'),
-            just('\n').to(' '), // TODO: Handle this properly.
-            just('d').ignore_then(n_digits(10, 3).slice().try_map(|digits: &str, span| {
-                char::from_u32(u32::from_str_radix(&digits, 10).unwrap())
-                    .ok_or_else(|| Rich::custom(span, "invalid decimal unicode value"))
-            })),
-            just('x').ignore_then(n_digits(16, 2).slice().try_map(|digits: &str, span| {
-                char::from_u32(u32::from_str_radix(&digits, 16).unwrap())
-                    .ok_or_else(|| Rich::custom(span, "invalid hex unicode value"))
-            })),
+        .ignore_then(
+            choice((
+                just('\\'),
+                just('"'),
+                just('\''),
+                just('n').to('\n'),
+                just('t').to('\t'),
+                just('b').to('\x08'),
+                just('r').to('\r'),
+                // TODO: Fix these.
+                // just('d').ignore_then(n_digits(10, 3).to_slice().validate(|digits: &str, span, emitter| {
+                //     match char::from_u32(u32::from_str_radix(&digits, 10).unwrap()) {
+                //         Some(c) => c,
+                //         None => {
+                //             emitter.emit(Rich::custom(span, format!("Invalid decimal unicode value: {}", digits)));
+                //             '?'
+                //         }
+                //     }
+                // })),
+                // just('x').ignore_then(n_digits(16, 2).to_slice().validate(|digits: &str, span, emitter| {
+                //     match char::from_u32(u32::from_str_radix(&digits, 16).unwrap()) {
+                //         Some(c) => c,
+                //         None => {
+                //             emitter.emit(Rich::custom(span, format!("Invalid hex unicode value: {}", digits)));
+                //             '?'
+                //         }
+                //     }
+                // })),
         )))
         .boxed();
 
+    // TODO: Newline escape.
+    // let newline_escape = just("\\\n").ignore_then(whitespace());
+
     let string = just('"')
-        .ignore_then(none_of(&['\\', '"']).or(escape).repeated())
+        .ignore_then(none_of(&['\\', '"']).or(escape)/*.or(newline_escape)*/.repeated())
         .then_ignore(just('"'))
-        .map_slice(Token::String)
+        .to_slice()
+        .map(Token::String) // TODO: This discards all the decoding we just did. We want .collect() instead.
         .boxed();
 
     // The order of these is important, e.g. <= must come before < otherwise
@@ -452,7 +476,8 @@ pub fn lexer<'src>(
     // TyVar
     let tyvar = just('\'')
         .ignore_then(ident())
-        .map_slice(Token::TyVal)
+        .to_slice()
+        .map(Token::TyVal)
         .boxed();
 
     // A parser for identifiers and keywords.
@@ -559,7 +584,7 @@ pub fn lexer<'src>(
     let comment = line_comment.or(block_comment);
 
     token
-        .map_with_span(|tok, span| (tok, span))
+        .map_with(|tok, e| (tok, e.span()))
         .padded_by(comment.repeated())
         .padded()
         .repeated()

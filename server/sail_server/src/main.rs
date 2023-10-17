@@ -16,8 +16,7 @@ use tower_lsp::lsp_types::{
 };
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
-mod text_document;
-
+mod analyser;
 mod completion;
 mod definitions;
 mod diagnostics;
@@ -25,6 +24,7 @@ mod file;
 mod files;
 mod hover;
 mod signature;
+mod text_document;
 
 #[derive(Default)]
 struct State {
@@ -299,27 +299,27 @@ impl LanguageServer for Backend {
 
         let position = params.text_document_position_params.position;
 
-        if let Some(token) = file.token_at(position) {
-            if let (sail_parser::Token::Id(ident), _) = token {
-                // Search the files in an arbitrary order currently.
-                // TODO: Smarter order. I think VSCode favours the first one.
-                // TODO: This is currently limited to one definition per file
-                // even though you can actually have more (e.g. for `overload`).
-                let definitions = state.all_files()
-                    .filter_map(|(uri, file)| {
-                        if let Some(offset) = file.definitions.get(ident) {
-                            let position = file.source.position_at(*offset);
-                            Some(Location::new(uri.clone(), Range::new(position, position)))
-                        } else {
-                            None
-                        }
-                    }).collect::<Vec<_>>();
+        // if let Some(token) = file.token_at(position) {
+        //     if let (sail_parser::Token::Id(ident), _) = token {
+        //         // Search the files in an arbitrary order currently.
+        //         // TODO: Smarter order. I think VSCode favours the first one.
+        //         // TODO: This is currently limited to one definition per file
+        //         // even though you can actually have more (e.g. for `overload`).
+        //         let definitions = state.all_files()
+        //             .filter_map(|(uri, file)| {
+        //                 if let Some(offset) = file.definitions.get(ident) {
+        //                     let position = file.source.position_at(*offset);
+        //                     Some(Location::new(uri.clone(), Range::new(position, position)))
+        //                 } else {
+        //                     None
+        //                 }
+        //             }).collect::<Vec<_>>();
 
-                if !definitions.is_empty() {
-                    return Ok(Some(GotoDefinitionResponse::Array(definitions)));
-                }
-            }
-        }
+        //         if !definitions.is_empty() {
+        //             return Ok(Some(GotoDefinitionResponse::Array(definitions)));
+        //         }
+        //     }
+        // }
         Ok(None)
     }
 
@@ -340,19 +340,20 @@ impl LanguageServer for Backend {
         Ok(None)
     }
 
-    async fn hover(&self, _params: HoverParams) -> Result<Option<Hover>> {
-        // self.client
-        //     .log_message(MessageType::INFO, format!("hover: {:?}", params))
-        //     .await;
+    async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
+        self.client
+            .log_message(MessageType::INFO, format!("hover: {:?}", params))
+            .await;
 
-        // let uri = &params.text_document_position_params.text_document.uri;
-        // let state = self.state.lock().await;
-        // let _file = state
-        //     .open_files
-        //     .get(uri)
-        //     .expect("hover for file that isn't open");
+        let uri = &params.text_document_position_params.text_document.uri;
+        let state = self.state.lock().await;
+        let file = state
+            .open_files
+            .get(uri)
+            .expect("hover for file that isn't open");
 
-        // TODO: Hover
+        if let Some(cst) = &file.cst {
+        }
 
         Ok(None)
     }

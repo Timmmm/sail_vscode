@@ -11,4 +11,4 @@ license = "MIT"
 # Disable the spill-stack feature because it depends on `psm` which doesn't
 # seem to cross-compile to Mac successfully at the moment. It means we can't
 # recurse as deep.
-chumsky = { version = "1.0.0-alpha.4", default-features = false, features = ["std"] }
+chumsky = { version = "1.0.0-alpha.4", default-features = false, features = ["std", "label"] }
