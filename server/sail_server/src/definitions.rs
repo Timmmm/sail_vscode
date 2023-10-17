@@ -37,6 +37,9 @@ pub fn add_definitions(
             (&Token::KwEnum, &Token::Id(ref ident)) => {
                 definitions.insert(ident.clone(), token_1.1.start);
             }
+            (&Token::KwBitfield, &Token::Id(ref ident)) => {
+                definitions.insert(ident.clone(), token_1.1.start);
+            }
             _ => {}
         }
     }
