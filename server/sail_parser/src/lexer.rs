@@ -5,7 +5,7 @@ use chumsky::{
     extra::ParserExtra,
     input::{StrInput, ValueInput},
     prelude::*,
-    text::Char,
+    text::{Char, whitespace},
     util::MaybeRef,
     Parser,
 };
@@ -28,8 +28,10 @@ pub enum Token<'src> {
     // String literal.
     String(&'src str),
 
-    // Operators and control characters.
+    // Pragma
     Dollar,
+
+    // Operators and control characters.
     LeftBracket,        // (
     RightBracket,       // )
     LeftSquareBracket,  // [
@@ -167,6 +169,9 @@ impl<'str> fmt::Display for Token<'str> {
 
             // String literal.
             Token::String(s) => write!(f, "{}", s),
+
+            // Pragma
+            Token::Dollar => write!(f, "$"),
 
             // Operators and other control characters.
             Token::Dollar => write!(f, "$"),
@@ -375,30 +380,43 @@ pub fn lexer<'src>(
 
     // Strings.
     let escape = just('\\')
-        .ignore_then(choice((
-            just('\\'),
-            just('"'),
-            just('\''),
-            just('n').to('\n'),
-            just('t').to('\t'),
-            just('b').to('\x08'),
-            just('r').to('\r'),
-            just('\n').to(' '), // TODO: Handle this properly.
-            just('d').ignore_then(n_digits(10, 3).slice().try_map(|digits: &str, span| {
-                char::from_u32(u32::from_str_radix(&digits, 10).unwrap())
-                    .ok_or_else(|| Rich::custom(span, "invalid decimal unicode value"))
-            })),
-            just('x').ignore_then(n_digits(16, 2).slice().try_map(|digits: &str, span| {
-                char::from_u32(u32::from_str_radix(&digits, 16).unwrap())
-                    .ok_or_else(|| Rich::custom(span, "invalid hex unicode value"))
-            })),
+        .ignore_then(
+            choice((
+                just('\\'),
+                just('"'),
+                just('\''),
+                just('n').to('\n'),
+                just('t').to('\t'),
+                just('b').to('\x08'),
+                just('r').to('\r'),
+                just('d').ignore_then(n_digits(10, 3).slice().validate(|digits: &str, span, emitter| {
+                    match char::from_u32(u32::from_str_radix(&digits, 10).unwrap()) {
+                        Some(c) => c,
+                        None => {
+                            emitter.emit(Rich::custom(span, format!("Invalid decimal unicode value: {}", digits)));
+                            '?'
+                        }
+                    }
+                })),
+                just('x').ignore_then(n_digits(16, 2).slice().validate(|digits: &str, span, emitter| {
+                    match char::from_u32(u32::from_str_radix(&digits, 16).unwrap()) {
+                        Some(c) => c,
+                        None => {
+                            emitter.emit(Rich::custom(span, format!("Invalid hex unicode value: {}", digits)));
+                            '?'
+                        }
+                    }
+                })),
         )))
         .boxed();
 
+    // TODO: Newline escape.
+    // let newline_escape = just("\\\n").ignore_then(whitespace());
+
     let string = just('"')
-        .ignore_then(none_of(&['\\', '"']).or(escape).repeated())
+        .ignore_then(none_of(&['\\', '"']).or(escape)/*.or(newline_escape)*/.repeated())
         .then_ignore(just('"'))
-        .map_slice(Token::String)
+        .map_slice(Token::String) // TODO: This discards all the decoding we just did. We want .collect() instead.
         .boxed();
 
     // The order of these is important, e.g. <= must come before < otherwise
