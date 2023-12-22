@@ -299,24 +299,24 @@ impl LanguageServer for Backend {
 
         let position = params.text_document_position_params.position;
 
-        if let Some(token) = file.token_at(position) {
-            if let (sail_parser::Token::Id(ident), _) = token {
-                // Search the files in an arbitrary order currently.
-                // TODO: Prioritise files in the same folder.
-                for (uri, file) in state.all_files() {
-                    if let Some(offset) = file.definitions.get(ident) {
-                        dbg!(offset);
-                        let position = file.source.position_at(*offset);
-                        dbg!(position);
+        // if let Some(token) = file.token_at(position) {
+        //     if let (sail_parser::Token::Id(ident), _) = token {
+        //         // Search the files in an arbitrary order currently.
+        //         // TODO: Prioritise files in the same folder.
+        //         for (uri, file) in state.all_files() {
+        //             if let Some(offset) = file.definitions.get(ident) {
+        //                 dbg!(offset);
+        //                 let position = file.source.position_at(*offset);
+        //                 dbg!(position);
 
-                        return Ok(Some(GotoDefinitionResponse::Scalar(Location::new(
-                            uri.clone(),
-                            Range::new(position, position),
-                        ))));
-                    }
-                }
-            }
-        }
+        //                 return Ok(Some(GotoDefinitionResponse::Scalar(Location::new(
+        //                     uri.clone(),
+        //                     Range::new(position, position),
+        //                 ))));
+        //             }
+        //         }
+        //     }
+        // }
         Ok(None)
     }
 

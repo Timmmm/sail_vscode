@@ -5,14 +5,18 @@ use tower_lsp::lsp_types::{
 use crate::{definitions, text_document::TextDocument};
 use chumsky::Parser;
 use std::{cmp::Ordering, collections::HashMap};
+use sail_parser::{lexer::lexer, parser::parse_file, cst::{DefAux, Spanned}};
 
 pub struct File {
     // The source code.
     pub source: TextDocument,
 
-    // The parse result if any. If there isn't one then that is because
-    // of a parse error.
-    pub tokens: Option<Vec<(sail_parser::Token, sail_parser::Span)>>,
+    // Parsed Concrete Syntax Tree.
+    pub cst: Option<Spanned<DefAux>>,
+
+    // // The parse result if any. If there isn't one then that is because
+    // // of a parse error.
+    // pub analysis: Option<Analysis>,
 
     // Go-to definition locations extracted from the file.
     pub definitions: HashMap<String, usize>,
@@ -25,7 +29,8 @@ impl File {
     pub fn new(source: String) -> Self {
         let mut f = Self {
             source: TextDocument::new(source),
-            tokens: None,
+            cst: None,
+            // analysis: None,
             definitions: HashMap::new(),
             diagnostics: Vec::new(),
         };
@@ -43,26 +48,45 @@ impl File {
 
     pub fn parse(&mut self) {
         let text = self.source.text();
-        let result = sail_parser::lexer().parse(text);
-        self.tokens = result.output().cloned();
+        let (tokens, mut errs) = lexer().parse(text).into_output_errors();
+
+        self.cst = None;
+
+        let parse_errs = if let Some(tokens) = &tokens {
+            let (cst, parse_errs) = parse_file()
+                .map_with(|cst, e| (cst, e.span()))
+                .parse(tokens.as_slice().spanned((src.len()..src.len()).into()))
+                .into_output_errors();
+
+            self.cst = cst;
+            parse_errs
+        } else {
+            Vec::new()
+        };
 
         let mut definitions = HashMap::with_capacity(self.definitions.len());
         let mut diagnostics = Vec::with_capacity(self.diagnostics.len());
 
-        if let Some(tokens) = &self.tokens {
-            definitions::add_definitions(tokens, text, &mut definitions);
-        } else {
-            diagnostics.push(Diagnostic::new(
-                Range::new(Position::new(0, 0), Position::new(0, 0)),
-                Some(DiagnosticSeverity::ERROR),
-                None,
-                Some("Sail".to_string()),
-                "Error parsing file".to_string(),
-                None,
-                None,
-            ));
-        }
-        for error in result.errors().into_iter() {
+        // if let Some(tokens) = &self.tokens {
+        //     definitions::add_definitions(tokens, text, &mut definitions);
+        // } else {
+        //     diagnostics.push(Diagnostic::new(
+        //         Range::new(Position::new(0, 0), Position::new(0, 0)),
+        //         Some(DiagnosticSeverity::ERROR),
+        //         None,
+        //         Some("Sail".to_string()),
+        //         "Error parsing file".to_string(),
+        //         None,
+        //         None,
+        //     ));
+        // }
+        for error in errs.into_iter()
+            .map(|e| e.map_token(|c| c.to_string()))
+            .chain(
+                parse_errs
+                    .into_iter()
+                    .map(|e| e.map_token(|tok| tok.to_string())),
+            ) {
             let span = error.span();
             let start = self.source.position_at(span.start);
             let end = self.source.position_at(span.end);
@@ -81,21 +105,21 @@ impl File {
         self.diagnostics = diagnostics;
     }
 
-    pub fn token_at(&self, position: Position) -> Option<&(sail_parser::Token, sail_parser::Span)> {
-        // Convert the line/character to an offset.
-        let offset = self.source.offset_at(&position);
-        // Binary search for a token that contains the offset.
-        let tokens = self.tokens.as_ref()?;
-        let token = tokens.binary_search_by(|(_, span)| {
-            if span.start <= offset && offset <= span.end {
-                Ordering::Equal
-            } else if span.start > offset {
-                Ordering::Greater
-            } else {
-                Ordering::Less
-            }
-        });
-        // If we found a token then return it.
-        token.ok().map(|i| &tokens[i])
-    }
+    // pub fn token_at(&self, position: Position) -> Option<&(sail_parser::Token, sail_parser::Span)> {
+    //     // Convert the line/character to an offset.
+    //     let offset = self.source.offset_at(&position);
+    //     // Binary search for a token that contains the offset.
+    //     let tokens = self.tokens.as_ref()?;
+    //     let token = tokens.binary_search_by(|(_, span)| {
+    //         if span.start <= offset && offset <= span.end {
+    //             Ordering::Equal
+    //         } else if span.start > offset {
+    //             Ordering::Greater
+    //         } else {
+    //             Ordering::Less
+    //         }
+    //     });
+    //     // If we found a token then return it.
+    //     token.ok().map(|i| &tokens[i])
+    // }
 }

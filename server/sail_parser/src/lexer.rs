@@ -11,7 +11,7 @@ use chumsky::{
 };
 use std::fmt;
 
-pub type Span = SimpleSpan<usize>;
+use crate::Span;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Token<'src> {
@@ -321,7 +321,7 @@ pub fn ident<'a, I: ValueInput<'a> + StrInput<'a, char>, E: ParserExtra<'a, I>>(
         )
         .ignored()
         .or(just('~').ignored())
-        .slice()
+        .to_slice()
 }
 
 /// Like digits() but an exact number of then.
@@ -354,7 +354,7 @@ pub fn lexer<'src>(
     let num = just('-')
         .or_not()
         .then(text::digits(10))
-        .map_slice(Token::Num)
+        .map_with(|_, e| (Token::Num, e.slice()))
         .boxed();
 
     // Real number.
@@ -363,19 +363,19 @@ pub fn lexer<'src>(
         .then(text::digits(10))
         .then(just('.'))
         .then(text::digits(10))
-        .map_slice(Token::Real)
+        .map_with(|_, e| (Token::Real, e.slice()))
         .boxed();
 
     // Hex number.
     let hex = just("0x")
         .ignore_then(text::digits(16))
-        .map_slice(Token::Hex)
+        .map_with(|_, e| (Token::Hex, e.slice()))
         .boxed();
 
     // Binary number.
     let bin = just("0b")
         .ignore_then(text::digits(2))
-        .map_slice(Token::Bin)
+        .map_with(|_, e| (Token::Bin, e.slice()))
         .boxed();
 
     // Strings.
@@ -389,7 +389,7 @@ pub fn lexer<'src>(
                 just('t').to('\t'),
                 just('b').to('\x08'),
                 just('r').to('\r'),
-                just('d').ignore_then(n_digits(10, 3).slice().validate(|digits: &str, span, emitter| {
+                just('d').ignore_then(n_digits(10, 3).to_slice().validate(|digits: &str, span, emitter| {
                     match char::from_u32(u32::from_str_radix(&digits, 10).unwrap()) {
                         Some(c) => c,
                         None => {
@@ -398,7 +398,7 @@ pub fn lexer<'src>(
                         }
                     }
                 })),
-                just('x').ignore_then(n_digits(16, 2).slice().validate(|digits: &str, span, emitter| {
+                just('x').ignore_then(n_digits(16, 2).to_slice().validate(|digits: &str, span, emitter| {
                     match char::from_u32(u32::from_str_radix(&digits, 16).unwrap()) {
                         Some(c) => c,
                         None => {
@@ -416,7 +416,7 @@ pub fn lexer<'src>(
     let string = just('"')
         .ignore_then(none_of(&['\\', '"']).or(escape)/*.or(newline_escape)*/.repeated())
         .then_ignore(just('"'))
-        .map_slice(Token::String) // TODO: This discards all the decoding we just did. We want .collect() instead.
+        .map_with(|_, e| (Token::String, e.slice())) // TODO: This discards all the decoding we just did. We want .collect() instead.
         .boxed();
 
     // The order of these is important, e.g. <= must come before < otherwise
@@ -470,7 +470,7 @@ pub fn lexer<'src>(
     // TyVar
     let tyvar = just('\'')
         .ignore_then(ident())
-        .map_slice(Token::TyVal)
+        .map_with(|_, e: &mut chumsky::input::MapExtra<'_, '_, _, _>| (Token::TyVal, e.slice()))
         .boxed();
 
     // A parser for identifiers and keywords.
@@ -577,7 +577,7 @@ pub fn lexer<'src>(
     let comment = line_comment.or(block_comment);
 
     token
-        .map_with_span(|tok, span| (tok, span))
+        .map_with(|tok, e| (tok, e.span()))
         .padded_by(comment.repeated())
         .padded()
         .repeated()

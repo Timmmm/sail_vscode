@@ -1,6 +1,6 @@
 use chumsky::{Parser, prelude::Rich, extra, IterParser, primitive::{any, just, choice}, select};
 
-use crate::{Spanned, cst::{Def, Identifier, OverloadDef, Type, Expression}, lexer::{Token, Span}};
+use crate::{Span, Spanned, cst::{Def, Identifier, OverloadDef, DefAux}, lexer::Token};
 
 
 // Input to the parser is tokens with spans `&[(Token, Span)]` from the lexer.
@@ -8,7 +8,7 @@ use crate::{Spanned, cst::{Def, Identifier, OverloadDef, Type, Expression}, lexe
 // to understand.
 type ParserInput<'tokens, 'src> =
     chumsky::input::SpannedInput<Token<'src>, Span, &'tokens [(Token<'src>, Span)]>;
-type ParserOutput = Vec<Spanned<Def>>;
+type ParserOutput = Vec<Spanned<DefAux>>; // TODO: Parse attributes and set this to Def.
 
 
 pub fn parse_file<'tokens, 'src: 'tokens>() -> impl Parser<
@@ -23,11 +23,12 @@ pub fn parse_file<'tokens, 'src: 'tokens>() -> impl Parser<
 fn parse_def<'tokens, 'src: 'tokens>() -> impl Parser<
     'tokens,
     ParserInput<'tokens, 'src>,
-    Spanned<Def>,
+    Spanned<DefAux>,
     extra::Err<Rich<'tokens, Token<'src>, Span>>,
 > + Clone {
+    // TODO: Parse attributes.
     choice((
-        parse_type(),
+        // parse_type(),
         // parse_bitfield(),
         // parse_fundef(),
         // parse_mapdef(),
@@ -41,7 +42,7 @@ fn parse_def<'tokens, 'src: 'tokens>() -> impl Parser<
         // parse_scattered(),
         // parse_measure(),
         // parse_loop_measure(),
-        parse_register(),
+        // parse_register(),
         // parse_pragma(),
     ))
 }
@@ -49,16 +50,16 @@ fn parse_def<'tokens, 'src: 'tokens>() -> impl Parser<
 fn parse_identifier<'tokens, 'src: 'tokens>() -> impl Parser<
     'tokens,
     ParserInput<'tokens, 'src>,
-    Spanned<Identifier>,
+    Identifier,
     extra::Err<Rich<'tokens, Token<'src>, Span>>,
 > + Clone {
-    select! { Token::Id(ident) => ident.to_owned() }.labelled("identifier").map_with_span(|name, span| (Identifier { name }, span))
+    select! { Token::Id(ident) => ident.to_owned() }.labelled("identifier").map_with(|_name, e| ((), e.span()))
 }
 
 fn parse_overload<'tokens, 'src: 'tokens>() -> impl Parser<
     'tokens,
     ParserInput<'tokens, 'src>,
-    Spanned<Def>,
+    Spanned<DefAux>,
     extra::Err<Rich<'tokens, Token<'src>, Span>>,
 > + Clone {
     // overload = { id, id, id }
@@ -76,48 +77,48 @@ fn parse_overload<'tokens, 'src: 'tokens>() -> impl Parser<
     .ignore_then(parse_identifier())
     .then_ignore(just(Token::Equal))
     .then(id_list)
-    .map_with_span(|(overload_id, target_ids), span| (Def::Overload(OverloadDef { overload_id, target_ids }), span))
+    .map_with(|(id, overload), e| (DefAux::OverloadDef(OverloadDef { id, overload }), e.span()))
 }
 
 
-fn parse_register<'tokens, 'src: 'tokens>() -> impl Parser<
-    'tokens,
-    ParserInput<'tokens, 'src>,
-    Spanned<Def>,
-    extra::Err<Rich<'tokens, Token<'src>, Span>>,
-> + Clone {
-    // register_def:
-    // | Register id Colon typ
-    //   { mk_reg_dec (DEC_reg ($4, $2, None)) $startpos $endpos }
-    // | Register id Colon typ Eq exp
-    //   { mk_reg_dec (DEC_reg ($4, $2, Some $6)) $startpos $endpos }
+// fn parse_register<'tokens, 'src: 'tokens>() -> impl Parser<
+//     'tokens,
+//     ParserInput<'tokens, 'src>,
+//     Spanned<DefAux>,
+//     extra::Err<Rich<'tokens, Token<'src>, Span>>,
+// > + Clone {
+//     // register_def:
+//     // | Register id Colon typ
+//     //   { mk_reg_dec (DEC_reg ($4, $2, None)) $startpos $endpos }
+//     // | Register id Colon typ Eq exp
+//     //   { mk_reg_dec (DEC_reg ($4, $2, Some $6)) $startpos $endpos }
 
-    // There's also stuff about effects and 'configuration' which I think is
-    // also to do with effects, but they aren't used anymore.
+//     // There's also stuff about effects and 'configuration' which I think is
+//     // also to do with effects, but they aren't used anymore.
 
-    just(Token::KwRegister)
-    .ignore_then(parse_identifier())
-    .then_ignore(just(Token::Colon))
-    .then(parse_type())
-    .then_maybe(just(Token::Equal).ignore_then(parse_expression()))
-    .map_with_span(|_, span| (Def::Register, span))
-}
+//     just(Token::KwRegister)
+//     .ignore_then(parse_identifier())
+//     .then_ignore(just(Token::Colon))
+//     .then(parse_type())
+//     .then_maybe(just(Token::Equal).ignore_then(parse_expression()))
+//     .map_with_span(|_, span| (DefAux::RegisterDef(, span))
+// }
 
 
-fn parse_type<'tokens, 'src: 'tokens>() -> impl Parser<
-    'tokens,
-    ParserInput<'tokens, 'src>,
-    Spanned<Type>,
-    extra::Err<Rich<'tokens, Token<'src>, Span>>,
-> + Clone {
-    todo!()
-}
+// fn parse_type<'tokens, 'src: 'tokens>() -> impl Parser<
+//     'tokens,
+//     ParserInput<'tokens, 'src>,
+//     Spanned<Type>,
+//     extra::Err<Rich<'tokens, Token<'src>, Span>>,
+// > + Clone {
+//     todo!()
+// }
 
-fn parse_expression<'tokens, 'src: 'tokens>() -> impl Parser<
-    'tokens,
-    ParserInput<'tokens, 'src>,
-    Spanned<Expression>,
-    extra::Err<Rich<'tokens, Token<'src>, Span>>,
-> + Clone {
-    todo!()
-}
+// fn parse_expression<'tokens, 'src: 'tokens>() -> impl Parser<
+//     'tokens,
+//     ParserInput<'tokens, 'src>,
+//     Spanned<Expression>,
+//     extra::Err<Rich<'tokens, Token<'src>, Span>>,
+// > + Clone {
+//     todo!()
+// }
