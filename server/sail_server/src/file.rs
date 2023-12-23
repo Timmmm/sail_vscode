@@ -5,7 +5,9 @@ use tower_lsp::lsp_types::{
 use crate::{definitions, text_document::TextDocument};
 use chumsky::Parser;
 use std::{cmp::Ordering, collections::HashMap};
-use sail_parser::{lexer::lexer, parser::parse_file, cst::{DefAux, Spanned}};
+use sail_parser::{lexer::lexer, parser::parse_file, cst::DefAux, Spanned};
+
+use chumsky::input::Input;
 
 pub struct File {
     // The source code.
@@ -47,8 +49,8 @@ impl File {
     }
 
     pub fn parse(&mut self) {
-        let text = self.source.text();
-        let (tokens, mut errs) = lexer().parse(text).into_output_errors();
+        let src = self.source.text();
+        let (tokens, mut errs) = lexer().parse(src).into_output_errors();
 
         self.cst = None;
 
@@ -58,7 +60,7 @@ impl File {
                 .parse(tokens.as_slice().spanned((src.len()..src.len()).into()))
                 .into_output_errors();
 
-            self.cst = cst;
+            //self.cst = cst;
             parse_errs
         } else {
             Vec::new()
