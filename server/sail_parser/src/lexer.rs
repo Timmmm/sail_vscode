@@ -383,42 +383,43 @@ pub fn lexer<'src>(
         .boxed();
 
     // Strings.
-    // let escape = just('\\')
-    //     .ignore_then(
-    //         choice((
-    //             just('\\'),
-    //             just('"'),
-    //             just('\''),
-    //             just('n').to('\n'),
-    //             just('t').to('\t'),
-    //             just('b').to('\x08'),
-    //             just('r').to('\r'),
-    //             just('d').ignore_then(n_digits(10, 3).to_slice().validate(|digits: &str, span, emitter| {
-    //                 match char::from_u32(u32::from_str_radix(&digits, 10).unwrap()) {
-    //                     Some(c) => c,
-    //                     None => {
-    //                         emitter.emit(Rich::custom(span, format!("Invalid decimal unicode value: {}", digits)));
-    //                         '?'
-    //                     }
-    //                 }
-    //             })),
-    //             just('x').ignore_then(n_digits(16, 2).to_slice().validate(|digits: &str, span, emitter| {
-    //                 match char::from_u32(u32::from_str_radix(&digits, 16).unwrap()) {
-    //                     Some(c) => c,
-    //                     None => {
-    //                         emitter.emit(Rich::custom(span, format!("Invalid hex unicode value: {}", digits)));
-    //                         '?'
-    //                     }
-    //                 }
-    //             })),
-    //     )))
-    //     .boxed();
+    let escape = just('\\')
+        .ignore_then(
+            choice((
+                just('\\'),
+                just('"'),
+                just('\''),
+                just('n').to('\n'),
+                just('t').to('\t'),
+                just('b').to('\x08'),
+                just('r').to('\r'),
+                // TODO: Fix these.
+                // just('d').ignore_then(n_digits(10, 3).to_slice().validate(|digits: &str, span, emitter| {
+                //     match char::from_u32(u32::from_str_radix(&digits, 10).unwrap()) {
+                //         Some(c) => c,
+                //         None => {
+                //             emitter.emit(Rich::custom(span, format!("Invalid decimal unicode value: {}", digits)));
+                //             '?'
+                //         }
+                //     }
+                // })),
+                // just('x').ignore_then(n_digits(16, 2).to_slice().validate(|digits: &str, span, emitter| {
+                //     match char::from_u32(u32::from_str_radix(&digits, 16).unwrap()) {
+                //         Some(c) => c,
+                //         None => {
+                //             emitter.emit(Rich::custom(span, format!("Invalid hex unicode value: {}", digits)));
+                //             '?'
+                //         }
+                //     }
+                // })),
+        )))
+        .boxed();
 
     // TODO: Newline escape.
     // let newline_escape = just("\\\n").ignore_then(whitespace());
 
     let string = just('"')
-        .ignore_then(none_of(&['\\', '"'])/*.or(escape)*//*.or(newline_escape)*/.repeated())
+        .ignore_then(none_of(&['\\', '"']).or(escape)/*.or(newline_escape)*/.repeated())
         .then_ignore(just('"'))
         .to_slice()
         .map(Token::String) // TODO: This discards all the decoding we just did. We want .collect() instead.
