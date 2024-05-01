@@ -49,7 +49,7 @@ pub fn add_definitions(
     // "Parse" enums of the form `enum Foo = { Bar, Baz, ... }`
     let mut token_iter = tokens.iter();
     while let Some(next) = token_iter.next() {
-        if matches!(next.0, Token::KwEnum | Token::KwOverload) {
+        if next.0 == Token::KwEnum {
             add_enum_definition(&mut token_iter, definitions);
         }
     }
