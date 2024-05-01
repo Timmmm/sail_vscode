@@ -30,7 +30,7 @@ jobs:
 
     # This compiles Clang but it should cache the results for future builds.
     - name: Set up MacOS Cross Compiler
-      uses: Timmmm/setup-osxcross@v2
+      uses: Timmmm/setup-osxcross@v3
       with:
         osx-version: "12.3"
 
@@ -38,13 +38,13 @@ jobs:
       run: rustup target add x86_64-unknown-linux-musl x86_64-pc-windows-gnu x86_64-apple-darwin aarch64-apple-darwin
 
     - name: Check out source code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Make Release
       run: ./make release
 
     - name: Upload Package
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: package
         path: '*.vsix'
