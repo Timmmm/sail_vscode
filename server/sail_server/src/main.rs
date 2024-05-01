@@ -302,18 +302,21 @@ impl LanguageServer for Backend {
         if let Some(token) = file.token_at(position) {
             if let (sail_parser::Token::Id(ident), _) = token {
                 // Search the files in an arbitrary order currently.
-                // TODO: Prioritise files in the same folder.
-                for (uri, file) in state.all_files() {
-                    if let Some(offset) = file.definitions.get(ident) {
-                        dbg!(offset);
-                        let position = file.source.position_at(*offset);
-                        dbg!(position);
+                // TODO: Smarter order. I think VSCode favours the first one.
+                // TODO: This is currently limited to one definition per file
+                // even though you can actually have more (e.g. for `overload`).
+                let definitions = state.all_files()
+                    .filter_map(|(uri, file)| {
+                        if let Some(offset) = file.definitions.get(ident) {
+                            let position = file.source.position_at(*offset);
+                            Some(Location::new(uri.clone(), Range::new(position, position)))
+                        } else {
+                            None
+                        }
+                    }).collect::<Vec<_>>();
 
-                        return Ok(Some(GotoDefinitionResponse::Scalar(Location::new(
-                            uri.clone(),
-                            Range::new(position, position),
-                        ))));
-                    }
+                if !definitions.is_empty() {
+                    return Ok(Some(GotoDefinitionResponse::Array(definitions)));
                 }
             }
         }
