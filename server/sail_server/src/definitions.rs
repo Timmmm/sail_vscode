@@ -34,13 +34,41 @@ pub fn add_definitions(
             (&Token::KwType, &Token::Id(ref ident)) => {
                 definitions.insert(ident.clone(), token_1.1.start);
             }
-            (&Token::KwEnum, &Token::Id(ref ident)) => {
+            (&Token::KwOverload, &Token::Id(ref ident)) => {
                 definitions.insert(ident.clone(), token_1.1.start);
             }
             (&Token::KwBitfield, &Token::Id(ref ident)) => {
                 definitions.insert(ident.clone(), token_1.1.start);
+                // Auto-generated Mk_ functions.
+                definitions.insert(format!("Mk_{}", ident), token_1.1.start);
             }
             _ => {}
+        }
+    }
+
+    // "Parse" enums of the form `enum Foo = { Bar, Baz, ... }`
+    let mut token_iter = tokens.iter();
+    while let Some(next) = token_iter.next() {
+        if matches!(next.0, Token::KwEnum | Token::KwOverload) {
+            add_enum_definition(&mut token_iter, definitions);
+        }
+    }
+}
+
+fn add_enum_definition(token_iter: &mut std::slice::Iter<(Token, Span)>, definitions: &mut HashMap<String, usize>) {
+    if let Some((Token::Id(ref ident), span)) = token_iter.next() {
+        definitions.insert(ident.clone(), span.start);
+        if let Some((Token::Equal, _)) = token_iter.next() {
+            if let Some((Token::LeftCurlyBracket, _)) = token_iter.next() {
+                while let Some((Token::Id(ident), span)) = token_iter.next() {
+                    definitions.insert(ident.clone(), span.start);
+                    if let Some((Token::Comma, _)) = token_iter.next() {
+                        // Ok
+                    } else {
+                        break;
+                    }
+                }
+            }
         }
     }
 }
