@@ -318,7 +318,7 @@ pub fn ident<'a, I: ValueInput<'a> + StrInput<'a, char>, E: ParserExtra<'a, I>>(
         )
         .ignored()
         .or(just('~').ignored())
-        .slice()
+        .to_slice()
 }
 
 /// Like digits() but an exact number of then.
@@ -351,7 +351,8 @@ pub fn lexer<'src>(
     let num = just('-')
         .or_not()
         .then(text::digits(10))
-        .map_slice(|s: &str| Token::Num(s.to_owned()))
+        .to_slice()
+        .map(|s: &str| Token::Num(s.to_owned()))
         .boxed();
 
     // Real number.
@@ -360,19 +361,22 @@ pub fn lexer<'src>(
         .then(text::digits(10))
         .then(just('.'))
         .then(text::digits(10))
-        .map_slice(|s: &str| Token::Real(s.to_owned()))
+        .to_slice()
+        .map(|s: &str| Token::Real(s.to_owned()))
         .boxed();
 
     // Hex number.
     let hex = just("0x")
         .ignore_then(text::digits(16))
-        .map_slice(|s: &str| Token::Hex(s.to_owned()))
+        .to_slice()
+        .map(|s: &str| Token::Hex(s.to_owned()))
         .boxed();
 
     // Binary number.
     let bin = just("0b")
         .ignore_then(text::digits(2))
-        .map_slice(|s: &str| Token::Bin(s.to_owned()))
+        .to_slice()
+        .map(|s: &str| Token::Bin(s.to_owned()))
         .boxed();
 
     // Strings.
@@ -386,11 +390,11 @@ pub fn lexer<'src>(
             just('b').to('\x08'),
             just('r').to('\r'),
             just('\n').to(' '), // TODO: Handle this properly.
-            just('d').ignore_then(n_digits(10, 3).slice().try_map(|digits: &str, span| {
+            just('d').ignore_then(n_digits(10, 3).to_slice().try_map(|digits: &str, span| {
                 char::from_u32(u32::from_str_radix(&digits, 10).unwrap())
                     .ok_or_else(|| Rich::custom(span, "invalid decimal unicode value"))
             })),
-            just('x').ignore_then(n_digits(16, 2).slice().try_map(|digits: &str, span| {
+            just('x').ignore_then(n_digits(16, 2).to_slice().try_map(|digits: &str, span| {
                 char::from_u32(u32::from_str_radix(&digits, 16).unwrap())
                     .ok_or_else(|| Rich::custom(span, "invalid hex unicode value"))
             })),
@@ -400,7 +404,8 @@ pub fn lexer<'src>(
     let string = just('"')
         .ignore_then(none_of(&['\\', '"']).or(escape).repeated())
         .then_ignore(just('"'))
-        .map_slice(|s: &str| Token::String(s.to_owned()))
+        .to_slice()
+        .map(|s: &str| Token::String(s.to_owned()))
         .boxed();
 
     // The order of these is important, e.g. <= must come before < otherwise
@@ -454,7 +459,8 @@ pub fn lexer<'src>(
     // TyVar
     let tyvar = just('\'')
         .ignore_then(ident())
-        .map_slice(|s: &str| Token::TyVal(s.to_owned()))
+        .to_slice()
+        .map(|s: &str| Token::TyVal(s.to_owned()))
         .boxed();
 
     // A parser for identifiers and keywords.
@@ -561,7 +567,7 @@ pub fn lexer<'src>(
     let comment = line_comment.or(block_comment);
 
     token
-        .map_with_span(|tok, span| (tok, span))
+        .map_with(|tok, e| (tok, e.span()))
         .padded_by(comment.repeated())
         .padded()
         .repeated()
