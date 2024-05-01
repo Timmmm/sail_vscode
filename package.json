@@ -9,7 +9,7 @@
     "license": "MIT",
     "icon": "images/icon.png",
     "engines": {
-        "vscode": "^1.80.0"
+        "vscode": "^1.88.1"
     },
     "categories": [
         "Programming Languages",
@@ -40,12 +40,12 @@
         "vscode-languageclient": "^8.1.0"
     },
     "devDependencies": {
-        "@types/node": "^20.5.6",
-        "@types/vscode": "^1.80.0",
+        "@types/node": "^18.18.2",
+        "@types/vscode": "^1.88.0",
         "@typescript-eslint/parser": "^6.4.1",
         "esbuild": "^0.19.2",
         "eslint": "^8.8.0",
-        "typescript": "^5.2.2",
+        "typescript": "^5.4.5",
         "@vscode/vsce": "^2.20.1",
         "vscode-test": "^1.6.1"
     },
