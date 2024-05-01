@@ -5,7 +5,7 @@
     "repository": "https://github.com/timmmm/sail_vscode/",
     "author": "Tim Hutt",
     "publisher": "TimHutt",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "license": "MIT",
     "icon": "images/icon.png",
     "engines": {
