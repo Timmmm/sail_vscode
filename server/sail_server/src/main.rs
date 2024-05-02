@@ -1,4 +1,5 @@
 use file::File;
+use std::cmp::Reverse;
 use std::collections::hash_map::HashMap;
 use tokio::sync::Mutex;
 use tower_lsp::jsonrpc::Result;
@@ -301,11 +302,9 @@ impl LanguageServer for Backend {
 
         if let Some(token) = file.token_at(position) {
             if let (sail_parser::Token::Id(ident), _) = token {
-                // Search the files in an arbitrary order currently.
-                // TODO: Smarter order. I think VSCode favours the first one.
                 // TODO: This is currently limited to one definition per file
                 // even though you can actually have more (e.g. for `overload`).
-                let definitions = state.all_files()
+                let mut definitions = state.all_files()
                     .filter_map(|(uri, file)| {
                         if let Some(offset) = file.definitions.get(ident) {
                             let position = file.source.position_at(*offset);
@@ -315,7 +314,22 @@ impl LanguageServer for Backend {
                         }
                     }).collect::<Vec<_>>();
 
+                // Sort by "distance" to the file from the currently open one,
+                // as measured by the number of shared path components.
+                // TODO: For some reason this doesn't quite work on Windows
+                // because `uri.path_segments()` starts with `c%3A` sometimes
+                // instead of `c:`. Also we should do case insensitive comparison
+                // on Windows. Let's just give up on Windows for now.
+                definitions.sort_by_key(|location| Reverse(
+                    match (uri.path_segments(), location.uri.path_segments()) {
+                        (Some(p0), Some(p1)) =>
+                            p0.zip(p1).take_while(|(a, b)| a == b).count(),
+                        _ => 0,
+                    }
+                ));
+
                 if !definitions.is_empty() {
+                    eprintln!("First definition URI: {}", definitions[0].uri);
                     return Ok(Some(GotoDefinitionResponse::Array(definitions)));
                 }
             }
