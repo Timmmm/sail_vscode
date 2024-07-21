@@ -389,7 +389,7 @@ impl LanguageServer for Backend {
     }
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();

@@ -62,10 +62,6 @@ struct Opts {
     /// * server        Build the Rust language server
     target: Target,
 
-    /// don't cross-compile the server (useful for development). Ignored for the release target.
-    #[arg(long)]
-    no_cross: bool,
-
     /// don't clean when making a release (only for `make release`)
     #[arg(long)]
     no_clean: bool,
@@ -113,119 +109,43 @@ fn make_client() -> Result<()> {
         .status()?
         .exit_ok()?;
 
-    Ok(())
-}
+    // Also for the launcher wrapper. Typescript could do this but eh.
+    Command::new(NPX)
+        .arg("--no-install")
+        .arg("esbuild")
+        .arg("--bundle")
+        .arg("client/server_launcher.ts")
+        .arg("--outdir=dist")
+        .arg("--platform=node")
+        .arg("--external:vscode")
+        .status()?
+        .exit_ok()?;
 
-#[derive(PartialEq, Eq, Debug)]
-enum Platform {
-    LinuxX86,
-    MacX86,
-    MacArm,
-    WinX86,
-    Other(String),
-}
-
-impl Platform {
-    fn native() -> Self {
-        use std::env::consts::{ARCH, OS};
-        match (OS, ARCH) {
-            ("linux", "x86_64") => Self::LinuxX86,
-            ("macos", "x86_64") => Self::MacX86,
-            ("macos", "aarch64") => Self::MacArm,
-            ("windows", "x86_64") => Self::WinX86,
-            _ => Self::Other(format!("{} {}", OS, ARCH)),
-        }
-    }
-
-    fn rust_target(&self) -> Option<&'static str> {
-        match self {
-            Platform::LinuxX86 => Some("x86_64-unknown-linux-musl"),
-            Platform::MacArm => Some("aarch64-apple-darwin"),
-            Platform::MacX86 => Some("x86_64-apple-darwin"),
-            Platform::WinX86 => Some("x86_64-pc-windows-gnu"),
-            Platform::Other(_) => None,
-        }
-    }
-}
-
-/// Get the value passed to `--target` for Rust compilation, if any.
-/// It is not used for native builds except on Linux where we always use
-/// it to get musl.
-fn target_flag_value(target_platform: &Platform) -> Result<Option<&'static str>> {
-    // Both platforms must be known.
-    if Platform::native().rust_target().is_none() || target_platform.rust_target().is_none() {
-        bail!("Unsupported platform: {host_platform:?} -> {target_platform:?}", host_platform=Platform::native())
-    }
-    // Always use the --target flag on Linux to get musl.
-    if *target_platform == Platform::LinuxX86 {
-        return Ok(target_platform.rust_target());
-    }
-    // If we're running on native don't use --target.
-    if *target_platform == Platform::native() {
-        return Ok(None)
-    }
-    // Return the target flag.
-    Ok(target_platform.rust_target())
-}
-
-/// Set flags on the command for cross-compiling, depending on the current
-/// and target platforms.
-fn set_cargo_flags(command: &mut Command, target_platform: &Platform) -> Result<()> {
-    if let Some(flag) = target_flag_value(target_platform)? {
-        command.arg("--target").arg(flag);
-    }
     Ok(())
 }
 
 /// Get the final output path depending on the current and target platforms.
-/// TODO: Probably should use `cargo metadata` strictly.
-fn copy_server_binary_to_dist(target_platform: &Platform) -> Result<()> {
+fn copy_server_binary_to_dist() -> Result<()> {
     fs::create_dir_all("dist")?;
 
-    let target = target_flag_value(target_platform)?;
-
-    let mut from = if let Some(target) = target {
-        format!("server/target/{target}/release/sail_server")
-    } else {
-        "server/target/release/sail_server".to_owned()
-    };
-
-    if matches!(target_platform, Platform::Other(_)) {
-        bail!("Unsupported target platform: {:?}", target_platform);
-    }
-
-    let mut to = format!("dist/server_{}", target_platform.rust_target().unwrap());
-
-    if *target_platform == Platform::WinX86 {
-        from.push_str(".exe");
-        to.push_str(".exe");
-    }
+    let from = "server/target/wasm32-wasi/release/sail_server.wasm";
+    let to = "dist/server.wasm";
 
     fs::copy(from, to)?;
 
     Ok(())
 }
 
-fn make_server(no_cross: bool) -> Result<()> {
+fn make_server() -> Result<()> {
     eprintln!("Building server...");
 
-    for target_platform in [Platform::LinuxX86, Platform::MacX86, Platform::MacArm, Platform::WinX86] {
-        if no_cross && target_platform != Platform::native() {
-            continue;
-        }
+    let mut command = Command::new("cargo");
+    command.arg("build").arg("--release").arg("--target").arg("wasm32-wasi").current_dir("server");
 
-        eprintln!("  Platform: {:?}", target_platform);
+    command.status()?.exit_ok()?;
 
-        let mut command = Command::new("cargo");
-        command.arg("build").arg("--release").current_dir("server");
-
-        set_cargo_flags(&mut command, &target_platform)?;
-
-        command.status()?.exit_ok()?;
-
-        // Copy the output to `dist`.
-        copy_server_binary_to_dist(&target_platform)?;
-    }
+    // Copy the output to `dist`.
+    copy_server_binary_to_dist()?;
 
     Ok(())
 }
@@ -287,14 +207,14 @@ fn main() -> Result<()> {
         }
     }
 
-    check_build_dependencies(&opts)?;
+    check_build_dependencies()?;
 
     match opts.target {
         Target::Client => {
             make_client()?;
         }
         Target::Server => {
-            make_server(opts.no_cross)?;
+            make_server()?;
         }
         Target::Package => {
             make_package()?;
@@ -308,7 +228,7 @@ fn main() -> Result<()> {
             }
             npm_install()?;
             make_client()?;
-            make_server(opts.no_cross)?;
+            make_server()?;
             make_package()?;
         }
         Target::NpmInstall => {
@@ -345,7 +265,7 @@ fn rustup_installed_items(item_type: &str) -> Result<HashSet<String>> {
 }
 
 
-fn check_build_dependencies(opts: &Opts) -> Result<()> {
+fn check_build_dependencies() -> Result<()> {
     eprintln!("Checking build dependencies...");
 
     // For now just check all dependencies, but we could skip some checks
@@ -355,68 +275,17 @@ fn check_build_dependencies(opts: &Opts) -> Result<()> {
     check_command_exists("cargo", &["--version"], "You might need to install Rust: https://www.rust-lang.org/tools/install")?;
     check_command_exists("rustup", &["--version"], "You might need to install Rust: https://www.rust-lang.org/tools/install")?;
 
-    if opts.no_cross {
-        if Platform::native() == Platform::LinuxX86 {
-            // We always use musl on Linux.
-            check_command_exists("x86_64-linux-musl-gcc", &["--version"], "You might need to install a compiler for Musl Linux. Try 'sudo apt install musl-tools'.")?;
-        }
-        return Ok(());
-    }
-
-    // Check cross-compilers.
-    match Platform::native() {
-        Platform::LinuxX86 => {
-            check_command_exists("x86_64-linux-musl-gcc", &["--version"], "You might need to install a compiler for Musl Linux. Try 'sudo apt install musl-tools'.")?;
-            check_command_exists("x86_64-w64-mingw32-gcc", &["--version"], "You might need to install a cross-compiler for Windows. Try 'sudo apt install gcc-mingw-w64-x86-64-win32'.")?;
-            // check_command_exists("x86_64-apple-darwin-gcc", &["--version"], "You might need to install a cross-compiler for Mac.")?;
-            // check_command_exists("aarch64-apple-darwin-gcc", &["--version"], "You might need to install a cross-compiler for Mac.")?;
-        }
-        Platform::MacX86 => {
-            check_command_exists("x86_64-linux-musl-gcc", &["--version"], "You might need to install a cross-compiler for Linux. Try `brew install FiloSottile/musl-cross/musl-cross`.")?;
-            check_command_exists("x86_64-w64-mingw32-gcc", &["--version"], "You might need to install a cross-compiler for Windows. Try `brew install mingw-w64`.")?;
-            check_command_exists("aarch64-apple-darwin-gcc", &["--version"], "You might need to install a cross-compiler for Mac.")?;
-        }
-        Platform::MacArm => {
-            check_command_exists("x86_64-linux-musl-gcc", &["--version"], "You might need to install a cross-compiler for Linux. Try `brew install FiloSottile/musl-cross/musl-cross`.")?;
-            check_command_exists("x86_64-w64-mingw32-gcc", &["--version"], "You might need to install a cross-compiler for Windows. Try `brew install mingw-w64`.")?;
-            check_command_exists("x86_64-apple-darwin-gcc", &["--version"], "You might need to install a cross-compiler for Mac.")?;
-        }
-        _ => {}
-    }
-
-    // Check non-native Rustup targets and components.
-    let target_platforms: &[Platform] = match Platform::native() {
-        Platform::LinuxX86 => &[
-            Platform::MacX86,
-            Platform::MacArm,
-            Platform::WinX86,
-        ],
-        Platform::MacX86 => &[
-            Platform::LinuxX86,
-            Platform::MacArm,
-            Platform::WinX86,
-        ],
-        Platform::MacArm => &[
-            Platform::LinuxX86,
-            Platform::MacX86,
-            Platform::WinX86,
-        ],
-        _ => &[],
-    };
 
     let installed_targets = rustup_installed_items("target")?;
-    let installed_components = rustup_installed_items("component")?;
+    // let installed_components = rustup_installed_items("component")?;
 
-    for target_platform in target_platforms {
-        let target = target_platform.rust_target().unwrap();
-        if !installed_targets.contains(target) {
-            bail!("{target} is not installed. Try `rustup target add {target}`");
-        }
-        let component = format!("rust-std-{target}");
-        if !installed_components.contains(&component) {
-            bail!("{component} is not installed. Try `rustup component add {component}`");
-        }
+    if !installed_targets.contains("wasm32-wasi") {
+        bail!("The wasm32-wasi target is not installed. Try `rustup target add wasm32-wasi`");
     }
+    // The WASI standard library is not precompiled yet apparently? Maybe it never will be?
+    // if !installed_components.contains("rust-std-wasm32-wasi") {
+    //     bail!("The rust-std-wasm32-wasi component is not installed. Try `rustup component add rust-std-wasm32-wasi`");
+    // }
 
     Ok(())
 }
