@@ -29,7 +29,7 @@
 			"patterns": [
 				{
 					"name": "keyword.control.sail",
-					"match": "\\b(if|then|while|for|return|match|else)\\b"
+					"match": "\\b(if|then|while|for|foreach|return|match|else)\\b"
 				},
 				{
 					"name": "keyword.type.sail",
@@ -37,7 +37,7 @@
 				},
 				{
 					"name": "keyword.other.sail",
-					"match": "\\b(type|val|let|in|function|scattered|enum|union|clause|default|order|dec|register|vector|bitfield)\\b"
+					"match": "\\b(type|val|var|let|in|function|scattered|enum|union|clause|default|order|dec|register|vector|bitfield)\\b"
 				},
 				{
 					"name": "keyword.other.sail",
