@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use tower_lsp::lsp_types::{
+use lsp_types::{
     Position as LspPosition, Range as LspRange, TextDocumentContentChangeEvent,
 };
 
@@ -181,7 +181,7 @@ mod test {
 
     use super::*;
 
-    use tower_lsp::lsp_types::Range as LspRange;
+    use lsp_types::Range as LspRange;
 
     #[test]
     fn empty_content() {

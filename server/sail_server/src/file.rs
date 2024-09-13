@@ -1,4 +1,4 @@
-use tower_lsp::lsp_types::{
+use lsp_types::{
     Diagnostic, DiagnosticSeverity, Position, Range, TextDocumentContentChangeEvent,
 };
 

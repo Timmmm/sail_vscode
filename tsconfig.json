@@ -1,8 +1,10 @@
 {
 	"compilerOptions": {
-		"module": "commonjs",
-		"target": "es2020",
-		"lib": [ "es2020" ],
+		"module": "node16",
+		"target": "es2022",
+		// Note, WebAssembly is in 'dom' and is supported by Node, but it
+		// doesn't have full DOM support.
+		"lib": [ "es2022", "dom" ],
 		"outDir": "dist",
 		"rootDir": ".",
 		"sourceMap": true,
