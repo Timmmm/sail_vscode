@@ -24,7 +24,21 @@ mod signature;
 
 fn uri_to_path(uri: &Uri) -> Option<PathBuf> {
     if uri.scheme().is_some_and(|s| s.as_str() == "file") {
-        Some(uri.path().as_str().into())
+        // The Uri API doesn't handle percent decoding automatically.
+        let path_with_percents = uri.path().as_str();
+        let path = percent_encoding::percent_decode_str(path_with_percents).decode_utf8().ok()?;
+        let path = path.as_ref();
+
+        // On Windows, the path will start with a `/` that we need to remove.
+        // This is because the Uri API doesn't handle Windows paths correctly.
+        // Unfortunately it's difficult to tell if we're on Windows or not.
+
+        let path = if path.starts_with("/d:") {
+            &path[1..]
+        } else {
+            path
+        };
+        Some(path.into())
     } else {
         None
     }
@@ -341,6 +355,7 @@ where
 }
 
 fn main() -> Result<()> {
+    eprintln!("Sail language server started");
     let stdin = std::io::stdin().lock();
     let mut stdout = std::io::stdout().lock();
 
@@ -354,23 +369,26 @@ fn main() -> Result<()> {
         let request = match lsp::receive_request(&mut stdin_buf_read) {
             Ok(request) => request,
             Err(e) => {
+                eprintln!("Error receiving LSP request: {:?}", e);
                 lsp::send_error_response(&mut stdout, None, lsp::ERROR_INVALID_REQUEST, format!("Invalid JSON-RPC request: {}", e))?;
                 continue;
             },
         };
 
+        eprintln!("Request: {}", request.method);
+
         if request.jsonrpc != "2.0" {
+            eprintln!("Invalid JSON-RPC version: {:?}", request.jsonrpc);
             lsp::send_error_response(&mut stdout, Some(request.id), lsp::ERROR_INVALID_REQUEST, format!("Invalid JSON-RPC version: {:?}", request.jsonrpc))?;
             continue;
         }
-
-        eprintln!("request: {}", request.method);
 
         match request.method.as_str() {
             "initialize" => {
                 handle(&mut stdout, |params| server.initialize(params), request)?;
             }
             _ => {
+                eprintln!("Unknown method: {:?}", request.method);
                 lsp::send_error_response(&mut stdout, Some(request.id), lsp::ERROR_METHOD_NOT_FOUND, format!("Unknown method: {:?}", request.method))?;
             }
         }

@@ -87,7 +87,7 @@ pub fn receive_request(mut r: impl BufRead) -> Result<Request> {
         }
     }
 
-    if content_type.as_deref() != Some("application/vscode-jsonrpc; charset=utf-8") {
+    if content_type.as_deref().is_some_and(|ct| ct != "application/vscode-jsonrpc; charset=utf-8") {
         bail!("Invalid Content-Type header: {:?}", content_type);
     }
 

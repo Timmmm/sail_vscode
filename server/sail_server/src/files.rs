@@ -18,6 +18,7 @@ pub fn scan_folders(folders: HashSet<PathBuf>) -> HashMap<PathBuf, File> {
     let mut files = HashMap::new();
 
     for folder in folders {
+        eprintln!("Scanning folder: {}", folder.display());
         for entry in WalkDir::new(folder) {
             match entry {
                 Ok(entry) => {

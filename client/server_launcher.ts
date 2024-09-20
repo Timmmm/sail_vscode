@@ -3,7 +3,6 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 async function main() {
-	console.log("Sail LSP WASM launcher starting...");
 	const wasm = await WebAssembly.compile(
 		await readFile(join(__dirname, "server.wasm")),
 	);
@@ -13,10 +12,22 @@ async function main() {
 		},
 		// This option is mandatory.
 		version: "preview1",
+		preopens: {
+			"/": "/",
+			"a:/": "a:/",
+			"b:/": "b:/",
+			"c:/": "c:/",
+			"d:/": "d:/",
+			"e:/": "e:/",
+			"f:/": "f:/",
+			"g:/": "g:/",
+			"h:/": "h:/",
+			"i:/": "j:/",
+			"j:/": "j:/",
+		},
 	});
 	const instance = await WebAssembly.instantiate(wasm, <WebAssembly.Imports>wasi.getImportObject());
 
-	console.log("Sail LSP WASM start...");
 	wasi.start(instance);
 }
 
