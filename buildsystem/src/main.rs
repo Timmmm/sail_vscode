@@ -62,6 +62,10 @@ struct Opts {
     /// * server        Build the Rust language server
     target: Target,
 
+    /// build server in debug mode
+    #[arg(long)]
+    debug: bool,
+
     /// don't clean when making a release (only for `make release`)
     #[arg(long)]
     no_clean: bool,
@@ -125,10 +129,14 @@ fn make_client() -> Result<()> {
 }
 
 /// Get the final output path depending on the current and target platforms.
-fn copy_server_binary_to_dist() -> Result<()> {
+fn copy_server_binary_to_dist(debug: bool) -> Result<()> {
     fs::create_dir_all("dist")?;
 
-    let from = "server/target/wasm32-wasi/release/sail_server.wasm";
+    let from = if debug {
+        "server/target/wasm32-wasi/debug/sail_server.wasm"
+    } else {
+        "server/target/wasm32-wasi/release/sail_server.wasm"
+    };
     let to = "dist/server.wasm";
 
     fs::copy(from, to)?;
@@ -136,16 +144,20 @@ fn copy_server_binary_to_dist() -> Result<()> {
     Ok(())
 }
 
-fn make_server() -> Result<()> {
+fn make_server(debug: bool) -> Result<()> {
     eprintln!("Building server...");
 
     let mut command = Command::new("cargo");
-    command.arg("build").arg("--release").arg("--target").arg("wasm32-wasi").current_dir("server");
+    command.arg("build");
+    if !debug {
+        command.arg("--release");
+    }
+    command.arg("--target").arg("wasm32-wasi").current_dir("server");
 
     command.status()?.exit_ok()?;
 
     // Copy the output to `dist`.
-    copy_server_binary_to_dist()?;
+    copy_server_binary_to_dist(debug)?;
 
     Ok(())
 }
@@ -214,7 +226,7 @@ fn main() -> Result<()> {
             make_client()?;
         }
         Target::Server => {
-            make_server()?;
+            make_server(opts.debug)?;
         }
         Target::Package => {
             make_package()?;
@@ -228,7 +240,7 @@ fn main() -> Result<()> {
             }
             npm_install()?;
             make_client()?;
-            make_server()?;
+            make_server(opts.debug)?;
             make_package()?;
         }
         Target::NpmInstall => {

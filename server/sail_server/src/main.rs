@@ -22,6 +22,9 @@ mod hover;
 mod lsp;
 mod signature;
 
+#[cfg(debug_assertions)]
+mod autodebug;
+
 fn uri_to_path(uri: &Uri) -> Option<PathBuf> {
     if uri.scheme().is_some_and(|s| s.as_str() == "file") {
         // The Uri API doesn't handle percent decoding automatically.
